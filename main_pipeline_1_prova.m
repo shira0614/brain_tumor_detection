@@ -60,18 +60,54 @@ if num_pixels < 100
     error('Errore: La maschera del tumore è troppo piccola. Modifica il threshold.');
 end
 
-% Rendering 3D
-figure;
+%% 7️⃣ Visualizzazione 3D con Legenda Chiara
+figure('Color', 'black', 'Position', [100, 100, 900, 700], 'Name', 'Visualizzazione 3D Tumore');
 hold on;
-tumor_surface = isosurface(tumor_mask, 0.9);
-p = patch(tumor_surface, 'FaceColor', 'red', 'EdgeColor', 'none', 'FaceAlpha', 0.6);
-p.FaceAlpha = 0.3; % Più trasparente per vedere i dettagli
-isonormals(tumor_mask, p); % Migliora le normali per una visualizzazione più nitida
+
+% Visualizza il tessuto cerebrale con trasparenza
+brain_surface = isosurface(nii_data, otsu_threshold * 0.8);
+p_brain = patch(brain_surface, 'FaceColor', [0.8, 0.8, 0.9], 'EdgeColor', 'none');
+p_brain.FaceAlpha = 0.2;  % Cervello molto trasparente
+
+% Visualizza il tumore in rosso brillante
+tumor_surface = isosurface(tumor_mask, 0.5);  % Usa 0.5 per catturare meglio i contorni
+p_tumor = patch(tumor_surface, 'FaceColor', 'red', 'EdgeColor', 'none');
+p_tumor.FaceAlpha = 0.8;  % Tumore più opaco per evidenziarlo
+
+% Migliora la qualità visiva
+isonormals(smooth3(tumor_mask), p_tumor);
+isonormals(smooth3(nii_data), p_brain);
+
+% Configura illuminazione e visualizzazione
 axis equal; view(3);
-set(gca, 'Color', 'black'); % Sfondo nero per contrasto
-camlight headlight; lighting gouraud;
-xlabel('X'), ylabel('Y'), zlabel('Z');
-title('Ricostruzione 3D del Tumore');
+daspect([1,1,1]);
+lighting gouraud;
+camlight('headlight');
+camlight('right');
+
+% Migliora l'aspetto degli assi
+set(gca, 'XColor', 'white', 'YColor', 'white', 'ZColor', 'white');
+xlabel('X (mm)', 'Color', 'white'), ylabel('Y (mm)', 'Color', 'white'), zlabel('Z (mm)', 'Color', 'white');
+grid on;
+set(gca, 'GridColor', [0.3 0.3 0.3]);
+
+% Aggiungi legenda esplicativa
+legend([p_tumor, p_brain], 'Tumore', 'Tessuto Cerebrale', 'TextColor', 'white', 'Location', 'northeast');
+
+% Aggiungi titolo con informazioni sulla segmentazione
+title(sprintf('Visualizzazione 3D: Volume Tumore = %.2f mm³', num_pixels * prod(voxel_spacing)), ...
+      'Color', 'white', 'FontSize', 14);
+
+% Aggiungi testo informativo
+dim = [.2 .02 .3 .1];
+str = sprintf(['LEGENDA COLORI:\n' ...
+              '- ROSSO: Tessuto tumorale (>%d° percentile)\n' ...
+              '- GRIGIO: Tessuto cerebrale normale'], 99);
+annotation('textbox', dim, 'String', str, 'FitBoxToText', 'on', ...
+           'BackgroundColor', [0 0 0], 'Color', 'white', 'EdgeColor', 'white');
+
+% Abilita rotazione interattiva
+rotate3d on;
 
 % Opzionale: Visualizzare anche la TC
 tc_surface = isosurface(nii_data, threshold * 1.2);
