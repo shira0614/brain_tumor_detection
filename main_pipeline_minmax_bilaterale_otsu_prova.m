@@ -120,60 +120,16 @@ figure;
 imshow(tumor_mask(:,:,slice_idx), []);
 title('Sezione Assiale della Maschera del Tumore');
 
-%% 1️⃣ Caricare la label ground truth
-label_info = niftiinfo('BRATS_001_label.nii'); % Metadati della label
-label_data = niftiread('BRATS_001_label.nii'); % Volume 3D della ground truth
+% Confronto con la ground truth
+label_data = niftiread('BRATS_001_label.nii');
+label_data = label_data > 0; % si assume che il tumore sia rappresentato da valori = 1
 
-% Normalizziamo la label a valori binari (se necessario)
-label_data = label_data > 0; % Assumiamo che il tumore sia marcato con valori positivi
-
-% Controllare se le dimensioni corrispondono
 if ~isequal(size(tumor_mask), size(label_data))
     error('Errore: Le dimensioni della segmentazione e della ground truth non corrispondono!');
 end
 
-%% 2️⃣ Calcolare le metriche di valutazione
-TP = sum((tumor_mask(:) == 1) & (label_data(:) == 1)); % Veri positivi
-FP = sum((tumor_mask(:) == 1) & (label_data(:) == 0)); % Falsi positivi
-FN = sum((tumor_mask(:) == 0) & (label_data(:) == 1)); % Falsi negativi
-TN = sum((tumor_mask(:) == 0) & (label_data(:) == 0)); % Veri negativi
+metrics(tumor_mask, label_data)
 
-DSC = (2 * TP) ./ (2 * TP + FP + FN);
-IoU = TP ./ (TP + FP + FN);
-Sensitivity = TP ./ (TP + FN);
-Specificity = TN ./ (TN + FP);
-
-
-%% 3️⃣ Stampare i risultati
-fprintf('Risultati della valutazione:\n');
-fprintf('→ Dice Similarity Coefficient (DSC): %.4f\n', DSC);
-fprintf('→ Jaccard Index (IoU): %.4f\n', IoU);
-fprintf('→ Sensibilità (Recall): %.4f\n', Sensitivity);
-fprintf('→ Specificità: %.4f\n', Specificity);
-
-%% 4️⃣ Visualizzare un confronto tra segmentazione e ground truth
-slice_idx = round(size(tumor_mask, 3) / 2); % Scegliamo una slice centrale
-
-figure;
-tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact'); % Migliora la disposizione
-
-% Primo subplot: Segmentazione Predetta
-nexttile;
-imshow(tumor_mask(:,:,slice_idx), []);
-title('Segmentazione Predetta', 'FontSize', 12);
-
-% Secondo subplot: Ground Truth
-nexttile;
-imshow(label_data(:,:,slice_idx), []);
-title('Ground Truth', 'FontSize', 12);
-
-% Terzo subplot: Overlay tra segmentazione e ground truth
-nexttile;
-overlay = imfuse(tumor_mask(:,:,slice_idx), label_data(:,:,slice_idx), 'blend');
-imshow(overlay);
-title('Confronto Overlay', 'FontSize', 12);
-
-% Titolo globale della figura
-sgtitle('Confronto tra Segmentazione e Ground Truth', 'FontSize', 14);
+overlay_visualization(tumor_mask, label_data)
 
 

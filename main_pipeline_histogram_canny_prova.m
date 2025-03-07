@@ -1,3 +1,5 @@
+close all
+
 %% 1️⃣ Caricare l'immagine TC in 3D
 nii_info = niftiinfo('BRATS_001.nii'); % Metadati
 nii_data = niftiread('BRATS_001.nii'); % Volume 3D
@@ -104,51 +106,16 @@ figure;
 imshow(tumor_mask(:,:,slice_idx), []);
 title('Sezione Assiale della Maschera del Tumore');
 
-%% 6️⃣ Caricare la Ground Truth
+% Confronto con la ground truth
 label_data = niftiread('BRATS_001_label.nii');
-label_data = label_data > 0; % Normalizza la label a valori binari
+label_data = label_data > 0;
 
 if ~isequal(size(tumor_mask), size(label_data))
     error('Errore: Le dimensioni della segmentazione e della ground truth non corrispondono!');
 end
 
-%% 7️⃣ Calcolo delle Metriche
-TP = sum((tumor_mask(:) == 1) & (label_data(:) == 1));
-FP = sum((tumor_mask(:) == 1) & (label_data(:) == 0));
-FN = sum((tumor_mask(:) == 0) & (label_data(:) == 1));
-TN = sum((tumor_mask(:) == 0) & (label_data(:) == 0));
+metrics(tumor_mask, label_data)
 
-DSC = (2 * TP) / (2 * TP + FP + FN);
-IoU = TP / (TP + FP + FN);
-Sensitivity = TP / (TP + FN);
-Specificity = TN / (TN + FP);
-
-fprintf('Risultati della valutazione:\n');
-fprintf('→ Dice Similarity Coefficient (DSC): %.4f\n', DSC);
-fprintf('→ Jaccard Index (IoU): %.4f\n', IoU);
-fprintf('→ Sensibilità (Recall): %.4f\n', Sensitivity);
-fprintf('→ Specificità: %.4f\n', Specificity);
-
-figure;
-tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact'); % Migliora la disposizione
-
-% Primo subplot: Segmentazione Predetta
-nexttile;
-imshow(tumor_mask(:,:,slice_idx), []);
-title('Segmentazione Predetta', 'FontSize', 12);
-
-% Secondo subplot: Ground Truth
-nexttile;
-imshow(label_data(:,:,slice_idx), []);
-title('Ground Truth', 'FontSize', 12);
-
-% Terzo subplot: Overlay tra segmentazione e ground truth
-nexttile;
-overlay = imfuse(tumor_mask(:,:,slice_idx), label_data(:,:,slice_idx), 'blend');
-imshow(overlay);
-title('Confronto Overlay', 'FontSize', 12);
-
-% Titolo globale della figura
-sgtitle('Confronto tra Segmentazione e Ground Truth', 'FontSize', 14);
+overlay_visualization(tumor_mask, label_data)
 
 

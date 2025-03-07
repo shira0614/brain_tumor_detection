@@ -1,3 +1,5 @@
+close all 
+
 %% 1️⃣ Caricare l'immagine TC in 3D
 nii_info = niftiinfo('BRATS_001.nii'); % Metadati
 nii_data = niftiread('BRATS_001.nii'); % Volume 3D
@@ -10,6 +12,13 @@ disp(['Dimensioni del volume: ', num2str(size_nii)]);
 if length(size_nii) == 4
     nii_data = nii_data(:,:,:,1);
 end
+
+slice_idx = round(size(nii_data, 3) / 2); % Seleziona la slice centrale
+figure;
+imshow(nii_data(:,:,slice_idx), []);
+title('Immagine TC - Slice Centrale');
+colormap gray; % Assicura che l'immagine sia in scala di grigi
+colorbar;
 
 %% 2️⃣ Preprocessing: Normalizzazione min-max e Filtro Bilaterale
 nii_data = double(nii_data);
@@ -30,7 +39,7 @@ brain_mask = bwareaopen(brain_mask, 500);
 nii_data(~brain_mask) = 0;
 
 %% 4️⃣ Segmentazione del Tumore con K-Means
-num_clusters = 4; % Numero di cluster (tumore, tessuti sani, sfondo...)
+num_clusters = 3; % Numero di cluster (tumore, tessuti sani, sfondo...)
 nii_vector = nii_data(:);
 [idx, centers] = kmeans(nii_vector, num_clusters, 'Replicates', 3);
 
@@ -89,7 +98,7 @@ title(sprintf('Visualizzazione 3D: Volume Tumore = %.2f mm³', num_pixels * prod
       'Color', 'white', 'FontSize', 14);
 rotate3d on;
 
-%% 8️⃣ Caricare la Ground Truth
+% Confronto con la ground truth
 label_data = niftiread('BRATS_001_label.nii');
 label_data = label_data > 0;
 
@@ -97,43 +106,6 @@ if ~isequal(size(tumor_mask), size(label_data))
     error('Errore: Le dimensioni della segmentazione e della ground truth non corrispondono!');
 end
 
-%% 9️⃣ Calcolo delle Metriche di Valutazione
-TP = sum((tumor_mask(:) == 1) & (label_data(:) == 1));
-FP = sum((tumor_mask(:) == 1) & (label_data(:) == 0));
-FN = sum((tumor_mask(:) == 0) & (label_data(:) == 1));
-TN = sum((tumor_mask(:) == 0) & (label_data(:) == 0));
+metrics(tumor_mask, label_data)
 
-DSC = (2 * TP) / (2 * TP + FP + FN);
-IoU = TP / (TP + FP + FN);
-Sensitivity = TP / (TP + FN);
-Specificity = TN / (TN + FP);
-
-fprintf('Risultati della valutazione:\n');
-fprintf('→ Dice Similarity Coefficient (DSC): %.4f\n', DSC);
-fprintf('→ Jaccard Index (IoU): %.4f\n', IoU);
-fprintf('→ Sensibilità (Recall): %.4f\n', Sensitivity);
-fprintf('→ Specificità: %.4f\n', Specificity);
-
-%% 🔟 Visualizzazione del Confronto con la Ground Truth
-slice_idx = round(size(tumor_mask, 3) / 2);
-
-figure;
-tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
-
-% 1️⃣ Segmentazione Predetta
-nexttile;
-imshow(tumor_mask(:,:,slice_idx), []);
-title('Segmentazione Predetta', 'FontSize', 12);
-
-% 2️⃣ Ground Truth
-nexttile;
-imshow(label_data(:,:,slice_idx), []);
-title('Ground Truth', 'FontSize', 12);
-
-% 3️⃣ Overlay tra segmentazione e ground truth
-nexttile;
-overlay = imfuse(tumor_mask(:,:,slice_idx), label_data(:,:,slice_idx), 'blend');
-imshow(overlay);
-title('Confronto Overlay', 'FontSize', 12);
-
-sgtitle('Confronto tra Segmentazione e Ground Truth', 'FontSize', 14);
+overlay_visualization(tumor_mask, label_data)
